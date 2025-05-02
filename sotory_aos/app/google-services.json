@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "936251299364",
+    "project_id": "sotory-90d50",
+    "storage_bucket": "sotory-90d50.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:936251299364:android:5ead344815822c22862ab1",
+        "android_client_info": {
+          "package_name": "com.ssafy.sotory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFMBSGM0ykGMgPMQXKe7fXYGjvo_XJ1Jk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

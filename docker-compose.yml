@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  springboot:
+    image: ${SPRING_IMAGE}:${TAG}
+    container_name: sotory-springboot
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION}
+      JWT_REFRESH_EXPIRATION: ${JWT_ACCESS_EXPIRATION}
+      JWT_REFRESH_EXPIRATION_RENEW_THRESHOLD: ${JWT_REFRESH_EXPIRATION_RENEW_THRESHOLD} 
+      FINTECH_API_KEY: ${FINTECH_API_KEY}
+      FINTECH_INTSTITUTION_CODE: ${FINTECH_INTSTITUTION_CODE}
+      FINTECTH_APP_NO: ${FINTECTH_APP_NO}
+      FINTECH_BASE_URL: ${FINTECH_BASE_URL}
+      OPEN_WEATHER_KEY: ${OPEN_WEATHER_KEY}
+      FASTAPI_URL: ${FASTAPI_URL}
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 512M
+
+  fastapi:
+    image: ${PYTHON_IMAGE}:${TAG}
+    container_name: sotory-fastapi
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      ENV: ${ENV} 
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      AWS_REGION: ${AWS_REGION}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GPU_SERVER_URL: ${GPU_URL}
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+
+  nginx:
+    build:
+      context: ./ws
+      dockerfile: Dockerfile
+    container_name: sotory-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ws/conf.d:/etc/nginx/conf.d
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/log/nginx:/var/log/nginx   
+    depends_on:
+      - springboot
+      - fastapi
+    networks:
+      - backend
+
+  postgres:
+    image: postgres:15
+    container_name: sotory-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  redis:
+    image: redis:7
+    container_name: sotory-redis
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"   # 🔥 추가
+    networks:
+      - backend
+
+volumes:
+  postgres-data:
+    name: s12p21a503_postgres-data
+  redis-data:
+    name: s12p21a503_redis-data
+  
+networks:
+  backend:
+    driver: bridge

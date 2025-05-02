@@ -1,0 +1,78 @@
+variables:
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_USER: root
+  DB_NAME: sotory
+  REDIS_HOST: redis 
+  REDIS_PORT: 6379
+  FINTECH_INTSTITUTION_CODE: 00100
+  FINTECTH_APP_NO: 001
+  JWT_ACCESS_EXPIRATION: 604800000
+  JWT_REFRESH_EXPIRATION: 604800000  
+  JWT_REFRESH_EXPIRATION_RENEW_THRESHOLD: 259200000 
+  DOCKER_REGISTRY: ${DOCKERHUB_USERNAME}
+  FASTAPI_URL: http://fastapi:8000
+  TAG: ${CI_COMMIT_SHORT_SHA}
+  SPRING_IMAGE: ${DOCKERHUB_USERNAME}/spring-app
+  PYTHON_IMAGE: ${DOCKERHUB_USERNAME}/python-api
+  GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
+  ENV: production
+
+stages: 
+  - build 
+  - deploy
+  - test 
+
+before_script:
+  - echo "${DOCKERHUB_ACCESS_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+
+build:
+  stage: build
+  script:
+    - echo "TAG ${TAG}"
+    - echo "SPRING_IMAGE ${SPRING_IMAGE} ${TAG}"
+    - echo "PYTHON_IMAGE ${PYTHON_IMAGE} ${TAG}"
+    - echo "도커 로그인 시작"
+    - echo "${DOCKERHUB_ACCESS_TOKEN}" | docker login -u "${DOCKERHUB_USERNAME}" --password-stdin
+    - echo "로그인 완료, 이미지 빌드 시작"
+    - docker build -t ${SPRING_IMAGE}:${TAG} ./BE/springboot/sotory
+    - docker push ${SPRING_IMAGE}:${TAG}
+    - docker build -t ${PYTHON_IMAGE}:${TAG} ./BE/fastapi
+    - docker push ${PYTHON_IMAGE}:${TAG}
+
+deploy_job:
+  stage: deploy
+  script:
+    - echo "🚀 docker-compose 배포 시작"
+    - echo "🌟 새 이미지 받아오기"
+    - docker compose pull || true
+    - echo "🌟 컨테이너 올리기 (기존 것 교체)"
+    - docker compose up -d --build --remove-orphans
+  retry: 2
+  interruptible: true
+  resource_group: deploy-lock
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "develop/be"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "S12P21A503-109-gitlab-ci-cd"'
+      when: always
+    - when: never
+
+test_job:
+  stage: test
+  script:
+    - echo "✅ 이미 떠 있는 docker-compose 컨테이너에서 pytest 실행 중..."
+    - docker compose exec -T fastapi pytest test/  
+  retry: 1
+  interruptible: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "develop/be"'
+      when: always
+    - if: '$CI_COMMIT_BRANCH == "S12P21A503-109-gitlab-ci-cd"'
+      when: always
+    - when: never
+
